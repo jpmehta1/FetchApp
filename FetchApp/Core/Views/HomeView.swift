@@ -8,26 +8,26 @@
 import SwiftUI
 
 struct HomeView: View {
-    // This state object will hold our view model, which fetches and processes the data
+    // this state object will hold the home view model
     @StateObject var viewModel = HomeViewModel()
 
     var body: some View {
-        // The navigation view allows for navigation between views with a title
+        // The navigation view allows for navigation between views with a title, not needed here
         NavigationView {
-            // Using a List to present data groups
+            // Using a List to show data groups
             List {
-                // Loop through the keys (list IDs) which are sorted for display
+                // loop through and sort the keys(listID's) which point to the array containing the items
                 ForEach(viewModel.groupedAndSortedData.keys.sorted(), id: \.self) { listID in
-                    // Create a section for each list ID
+                    // create a section for each list ID
                     Section(header: Text("List ID \(listID)")) {
-                        // Check for nil using nil-coalescing to provide an empty array if nil
+                        // checks for nil using nil-coalescing
                         ForEach(viewModel.groupedAndSortedData[listID] ?? [], id: \.id) { item in
                             Text("\(item.name ?? "No name")")
                         }
                     }
                 }
             }
-            .navigationTitle("Items") // Set the title for the navigation bar
+            .navigationTitle("Items") // sets the title for the navigation bar
         }
     }
 }

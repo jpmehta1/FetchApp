@@ -6,10 +6,12 @@
 //
 import Foundation
 
+//Model for the Data Fetched from the endpoint
 struct FetchData: Codable {
     let id, listID: Int
     let name: String?
 
+    
     enum CodingKeys: String, CodingKey {
         case id
         case listID = "listId"

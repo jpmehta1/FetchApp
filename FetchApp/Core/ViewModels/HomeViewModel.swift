@@ -1,7 +1,16 @@
+//
+//  HomeViewModel.swift
+//  FetchApp
+//
+//  Created by Jeet P Mehta on 13/10/24.
+//
 import Foundation
 
 class HomeViewModel: ObservableObject {
+    //the main array which has the sorted ListID's pointing to the array of Fetch Data models which have the same ListIDs
     @Published var groupedAndSortedData = [Int: [FetchData]]()
+    
+    //url session declared
     private var session: URLSession
 
     init(session: URLSession = .shared) {
@@ -10,15 +19,18 @@ class HomeViewModel: ObservableObject {
     }
 
     func fetchData() {
+        //endpoint
         let urlString = "https://fetch-hiring.s3.amazonaws.com/hiring.json"
         
+        //convert string to url object with error handling
         guard let url = URL(string: urlString) else {
             print("Invalid URL")
             return
         }
         
+        //using weak self to avoid memory leaks through retain cycles
         let task = session.dataTask(with: url) { [weak self] data, response, error in
-            // Handle potential errors
+            // Handling potential errors
             if let error = error {
                 DispatchQueue.main.async {
                     print("DEBUG: Network Error \(error.localizedDescription)")
@@ -26,7 +38,7 @@ class HomeViewModel: ObservableObject {
                 return
             }
             
-            // Check if the HTTP response is valid
+            // Checking if the HTTP response is valid
             if let httpResponse = response as? HTTPURLResponse {
                 DispatchQueue.main.async {
                     print("DEBUG: Response code \(httpResponse.statusCode)")
@@ -38,7 +50,7 @@ class HomeViewModel: ObservableObject {
                 return
             }
 
-            // Ensure data is received
+            // Ensuring data is received
             guard let data = data else {
                 DispatchQueue.main.async {
                     print("DEBUG: No data received")
@@ -46,10 +58,11 @@ class HomeViewModel: ObservableObject {
                 return
             }
 
-            // Attempt to decode the JSON data
+            // Attempting to decode the JSON data
             do {
                 let decodedData = try JSONDecoder().decode([FetchData].self, from: data)
                 DispatchQueue.main.async {
+                    //calling the processData method on the weak self
                     self?.processData(decodedData)
                 }
             } catch {
@@ -63,19 +76,21 @@ class HomeViewModel: ObservableObject {
     }
     
     func processData(_ fetchedData: [FetchData]) {
+        //initialising a temporary data 2d array instance
         var tempData = [Int: [FetchData]]()
         
         // Filter and group data
         for item in fetchedData {
+            //checks if name is nil
             if let itemName = item.name {
                 if itemName.isEmpty {
-                    continue // Skip if name is empty
+                    continue // Skip if name is empty string
                 }
-                // Initialize the group if it doesn't exist
+                // Initializing the group if it doesn't exist
                 if tempData[item.listID] == nil {
                     tempData[item.listID] = []
                 }
-                // Append item to the group
+                // Appending item to the group accroding to the listID
                 tempData[item.listID]?.append(item)
             }
         }
@@ -83,18 +98,13 @@ class HomeViewModel: ObservableObject {
         // Sort each group by name
         for (listID, items) in tempData {
             let sortedItems = items.sorted(by: { ($0.name ?? "") < ($1.name ?? "") })
+            //replace the items in the tempData with the sorted data
             tempData[listID] = sortedItems
         }
         
         // Store the processed data
         self.groupedAndSortedData = tempData
         
-        // Optionally print each group's details
-        for (listID, items) in groupedAndSortedData.sorted(by: { $0.key < $1.key }) {
-            print("List ID: \(listID)")
-            for item in items {
-                print("   ID: \(item.id), Name: \(item.name ?? "No name")")
-            }
-        }
+       
     }
 }
