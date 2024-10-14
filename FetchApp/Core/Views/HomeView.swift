@@ -8,30 +8,35 @@
 import SwiftUI
 
 struct HomeView: View {
-    // this state object will hold the home view model
+    //msin view model
     @StateObject var viewModel = HomeViewModel()
 
     var body: some View {
-        // The navigation view allows for navigation between views with a title, not needed here
         NavigationView {
-            // Using a List to show data groups
             List {
-                // loop through and sort the keys(listID's) which point to the array containing the items
                 ForEach(viewModel.groupedAndSortedData.keys.sorted(), id: \.self) { listID in
-                    // create a section for each list ID
                     Section(header: Text("List ID \(listID)")) {
-                        // checks for nil using nil-coalescing
-                        ForEach(viewModel.groupedAndSortedData[listID] ?? [], id: \.id) { item in
-                            Text("\(item.name ?? "No name")")
+                        // Navigation link to navigate to the detail view of each List ID
+                        NavigationLink(destination: DetailView(items: viewModel.groupedAndSortedData[listID] ?? [], listID: listID)) {
+                            HStack {
+                                Image(systemName: "list.bullet")
+                                    .foregroundColor(.blue)
+                                Text("List ID \(listID)")
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
+                            .padding(.vertical, 5)
                         }
                     }
                 }
             }
-            .navigationTitle("Items") // sets the title for the navigation bar
+            .listStyle(GroupedListStyle())
+            .navigationTitle("Items")
         }
     }
 }
 
-//#Preview {
-//    HomeView()
-//}
