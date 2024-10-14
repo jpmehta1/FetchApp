@@ -2,8 +2,10 @@ import Foundation
 
 class HomeViewModel: ObservableObject {
     @Published var groupedAndSortedData = [Int: [FetchData]]()
+    private var session: URLSession
 
-    init() {
+    init(session: URLSession = .shared) {
+        self.session = session
         fetchData()
     }
 
@@ -15,7 +17,8 @@ class HomeViewModel: ObservableObject {
             return
         }
         
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+        let task = session.dataTask(with: url) { [weak self] data, response, error in
+            // Handle potential errors
             if let error = error {
                 DispatchQueue.main.async {
                     print("DEBUG: Network Error \(error.localizedDescription)")
@@ -23,16 +26,19 @@ class HomeViewModel: ObservableObject {
                 return
             }
             
-            guard let httpResponse = response as? HTTPURLResponse else {
+            // Check if the HTTP response is valid
+            if let httpResponse = response as? HTTPURLResponse {
+                DispatchQueue.main.async {
+                    print("DEBUG: Response code \(httpResponse.statusCode)")
+                }
+            } else {
                 DispatchQueue.main.async {
                     print("DEBUG: No HTTP response")
                 }
                 return
             }
-            DispatchQueue.main.async {
-                print("DEBUG: Response code \(httpResponse.statusCode)")
-            }
 
+            // Ensure data is received
             guard let data = data else {
                 DispatchQueue.main.async {
                     print("DEBUG: No data received")
@@ -40,6 +46,7 @@ class HomeViewModel: ObservableObject {
                 return
             }
 
+            // Attempt to decode the JSON data
             do {
                 let decodedData = try JSONDecoder().decode([FetchData].self, from: data)
                 DispatchQueue.main.async {
@@ -50,30 +57,39 @@ class HomeViewModel: ObservableObject {
                     print("DEBUG: Failed to decode with error \(error)")
                 }
             }
-        }.resume()
+        }
+        
+        task.resume()
     }
     
     func processData(_ fetchedData: [FetchData]) {
         var tempData = [Int: [FetchData]]()
         
-        // Group and filter data
+        // Filter and group data
         for item in fetchedData {
-            guard let itemName = item.name, !itemName.isEmpty else {
-                continue // Skip items with null or empty names
+            if let itemName = item.name {
+                if itemName.isEmpty {
+                    continue // Skip if name is empty
+                }
+                // Initialize the group if it doesn't exist
+                if tempData[item.listID] == nil {
+                    tempData[item.listID] = []
+                }
+                // Append item to the group
+                tempData[item.listID]?.append(item)
             }
-
-            tempData[item.listID, default: []].append(item)
         }
         
         // Sort each group by name
         for (listID, items) in tempData {
-            tempData[listID] = items.sorted(by: { $0.name! < $1.name! })
+            let sortedItems = items.sorted(by: { ($0.name ?? "") < ($1.name ?? "") })
+            tempData[listID] = sortedItems
         }
         
-        // Store sorted and grouped data
+        // Store the processed data
         self.groupedAndSortedData = tempData
         
-        // Print each item in a detailed format
+        // Optionally print each group's details
         for (listID, items) in groupedAndSortedData.sorted(by: { $0.key < $1.key }) {
             print("List ID: \(listID)")
             for item in items {
