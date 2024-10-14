@@ -8,9 +8,27 @@
 import SwiftUI
 
 struct HomeView: View {
-    @StateObject var model =  HomeViewModel()
+    // This state object will hold our view model, which fetches and processes the data
+    @StateObject var viewModel = HomeViewModel()
+
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        // The navigation view allows for navigation between views with a title
+        NavigationView {
+            // Using a List to present data groups
+            List {
+                // Loop through the keys (list IDs) which are sorted for display
+                ForEach(viewModel.groupedAndSortedData.keys.sorted(), id: \.self) { listID in
+                    // Create a section for each list ID
+                    Section(header: Text("List ID \(listID)")) {
+                        // Check for nil using nil-coalescing to provide an empty array if nil
+                        ForEach(viewModel.groupedAndSortedData[listID] ?? [], id: \.id) { item in
+                            Text("\(item.name ?? "No name")")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Items") // Set the title for the navigation bar
+        }
     }
 }
 
