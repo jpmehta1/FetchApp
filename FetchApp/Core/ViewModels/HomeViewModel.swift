@@ -1,49 +1,84 @@
-//
-//  HomeViewModel.swift
-//  FetchApp
-//
-//  Created by Jeet P Mehta on 13/10/24.
-//
-
 import Foundation
 
-class HomeViewModel: ObservableObject{
-    init(){
+class HomeViewModel: ObservableObject {
+    @Published var groupedAndSortedData = [Int: [FetchData]]()
+
+    init() {
         fetchData()
     }
-    func fetchData(){
-        //API endpoint for fetching data
+
+    func fetchData() {
         let urlString = "https://fetch-hiring.s3.amazonaws.com/hiring.json"
-        //convert the url string to a URL object
         
-        
-        guard let url = URL(string: urlString) else{
+        guard let url = URL(string: urlString) else {
+            print("Invalid URL")
             return
         }
         
-        
-        URLSession.shared.dataTask(with: url){data, response, error in
-          
-        //error handling while starting a new data task
-        if let error = error {
-                print("DEBUG: Error  \(error.localizedDescription)")
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    print("DEBUG: Network Error \(error.localizedDescription)")
+                }
                 return
             }
-        
-        //printing the response code
-        if let response = response as? HTTPURLResponse {
-                print("DEBUG: Response code \(response.statusCode)")
-        }
             
-        
-        //take the data and covert it to a string to see whether we're receiving the data properly
-        guard let data = data else { return }
-            let dataString  = String(data: data,encoding: .utf8)
-            print(dataString)
-            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    print("DEBUG: No HTTP response")
+                }
+                return
+            }
+            DispatchQueue.main.async {
+                print("DEBUG: Response code \(httpResponse.statusCode)")
+            }
+
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    print("DEBUG: No data received")
+                }
+                return
+            }
+
+            do {
+                let decodedData = try JSONDecoder().decode([FetchData].self, from: data)
+                DispatchQueue.main.async {
+                    self?.processData(decodedData)
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    print("DEBUG: Failed to decode with error \(error)")
+                }
+            }
         }.resume()
-        
     }
     
-    
+    func processData(_ fetchedData: [FetchData]) {
+        var tempData = [Int: [FetchData]]()
+        
+        // Group and filter data
+        for item in fetchedData {
+            guard let itemName = item.name, !itemName.isEmpty else {
+                continue // Skip items with null or empty names
+            }
+
+            tempData[item.listID, default: []].append(item)
+        }
+        
+        // Sort each group by name
+        for (listID, items) in tempData {
+            tempData[listID] = items.sorted(by: { $0.name! < $1.name! })
+        }
+        
+        // Store sorted and grouped data
+        self.groupedAndSortedData = tempData
+        
+        // Print each item in a detailed format
+        for (listID, items) in groupedAndSortedData.sorted(by: { $0.key < $1.key }) {
+            print("List ID: \(listID)")
+            for item in items {
+                print("   ID: \(item.id), Name: \(item.name ?? "No name")")
+            }
+        }
+    }
 }
